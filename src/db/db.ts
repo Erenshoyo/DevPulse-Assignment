@@ -35,3 +35,4 @@ export const initDB = async () => {
   }
 };
 
+export default pool;
