@@ -9,9 +9,9 @@ import config from "../../config";
 
 const secret = config.secret;
 
-const signUpToDB = async (req: Request) => {
+const signUpToDB = async (payLoad: ISignUp) => {
   try {
-    const { name, email, password, role = "contributor" }: ISignUp = req.body;
+    const { name, email, password, role = "contributor" } = payLoad;
 
     if (!name || !email || !password) {
       // sendResponse(res, {
@@ -53,6 +53,11 @@ const signUpToDB = async (req: Request) => {
     );
 
     const newUser = result.rows[0];
+
+    if (!newUser) {
+      throw new Error("User creation failed.");
+    }
+
     return newUser;
   } catch (error) {
     // sendResponse(res, {
@@ -61,13 +66,17 @@ const signUpToDB = async (req: Request) => {
     //   message: `Something went wrong`,
     //   error: error,
     // });
-    throw new Error("Something went wrong");
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong during login",
+    );
   }
 };
 
-const loginToDB = async (req: Request) => {
+const loginToDB = async (payLoad: ILogin) => {
   try {
-    const { email, password }: ILogin = req.body;
+    const { email, password } = payLoad;
 
     if (!email || !password) {
       // sendResponse(res, {
@@ -130,7 +139,11 @@ const loginToDB = async (req: Request) => {
     //   message: `Something went wrong`,
     //   error: error,
     // });
-    throw new Error("Something went wrong");
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong during login",
+    );
   }
 };
 
