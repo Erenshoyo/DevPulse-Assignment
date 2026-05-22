@@ -1,7 +1,4 @@
-import type { Request, Response } from "express";
 import type { ILogin, ISignUp, IUser } from "./auth.interface";
-import sendResponse from "../../utils/response";
-import { StatusCodes } from "http-status-codes";
 import pool from "../../db/db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -14,20 +11,10 @@ const signUpToDB = async (payLoad: ISignUp) => {
     const { name, email, password, role = "contributor" } = payLoad;
 
     if (!name || !email || !password) {
-      // sendResponse(res, {
-      //   statusCode: StatusCodes.BAD_REQUEST,
-      //   success: false,
-      //   message: "Fill up the required fields",
-      // });
       throw new Error("Signup credentials required.");
     }
 
     if (!["contributor", "maintainer"].includes(role)) {
-      // sendResponse(res, {
-      //   statusCode: StatusCodes.BAD_REQUEST,
-      //   success: false,
-      //   message: "Not allowed.",
-      // });
       throw new Error("Roles can only be 'Contributor'/'Maintainer'.");
     }
 
@@ -35,12 +22,8 @@ const signUpToDB = async (payLoad: ISignUp) => {
       `SELECT id FROM users WHERE email = $1`,
       [email],
     );
+
     if (duplicateEmail.rows.length > 0) {
-      // sendResponse(res, {
-      //   statusCode: StatusCodes.BAD_REQUEST,
-      //   success: false,
-      //   message: "Email already registered",
-      // });
       throw new Error(`Email already registered`);
     }
 
@@ -60,12 +43,6 @@ const signUpToDB = async (payLoad: ISignUp) => {
 
     return newUser;
   } catch (error) {
-    // sendResponse(res, {
-    //   statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
-    //   success: false,
-    //   message: `Something went wrong`,
-    //   error: error,
-    // });
     throw new Error(
       error instanceof Error
         ? error.message
@@ -79,11 +56,6 @@ const loginToDB = async (payLoad: ILogin) => {
     const { email, password } = payLoad;
 
     if (!email || !password) {
-      // sendResponse(res, {
-      //   statusCode: StatusCodes.BAD_REQUEST,
-      //   success: false,
-      //   message: "Credentials are needed to login",
-      // });
       throw new Error("Invalid Credentials");
     }
 
@@ -95,11 +67,6 @@ const loginToDB = async (payLoad: ILogin) => {
     const user = result.rows[0];
 
     if (!user) {
-      //   sendResponse(res, {
-      //     statusCode: StatusCodes.BAD_REQUEST,
-      //     success: false,
-      //     message: "Invalid email and password.",
-      //   });
       throw new Error("Invalid credentials");
     }
 
@@ -109,11 +76,6 @@ const loginToDB = async (payLoad: ILogin) => {
     );
 
     if (!passwordVerify) {
-      // sendResponse(res, {
-      //   statusCode: StatusCodes.BAD_REQUEST,
-      //   success: false,
-      //   message: "Invalid password.",
-      // });
       throw new Error("Invalid Password");
     }
 
@@ -133,12 +95,6 @@ const loginToDB = async (payLoad: ILogin) => {
 
     return data;
   } catch (error) {
-    // sendResponse(res, {
-    //   statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
-    //   success: false,
-    //   message: `Something went wrong`,
-    //   error: error,
-    // });
     throw new Error(
       error instanceof Error
         ? error.message
