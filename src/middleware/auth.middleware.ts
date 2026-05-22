@@ -11,29 +11,32 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
     const token = req.headers.authorization;
 
     if (!token) {
-      sendResponse(res, {
+      return sendResponse(res, {
         statusCode: StatusCodes.UNAUTHORIZED,
         success: false,
-        message: "Access denied!!!",
+        message: "Access denied. No token provided.",
       });
     }
 
-    const decoded = jwt.verify(token as string, secret as string) as JwtPayload;
+    const decoded = jwt.verify(token, secret as string) as JwtPayload;
     req.user = decoded;
 
     next();
   } catch (error) {
-    sendResponse(res, {
+    return sendResponse(res, {
       statusCode: StatusCodes.UNAUTHORIZED,
       success: false,
-      message: "Invalid token.",
+      message:
+        error instanceof jwt.TokenExpiredError
+          ? "Token has expired."
+          : "Invalid token.",
     });
   }
 };
 
 const maintainer = (req: Request, res: Response, next: NextFunction) => {
   if (req.user?.role !== "maintainer") {
-    sendResponse(res, {
+    return sendResponse(res, {
       statusCode: StatusCodes.FORBIDDEN,
       success: false,
       message: "Access denied. Maintainers only.",

@@ -2,27 +2,32 @@ import type { Request, Response } from "express";
 import { authService } from "./auth.service";
 import sendResponse from "../../utils/response";
 import { StatusCodes } from "http-status-codes";
+import { AppError } from "../../utils/appError";
 
 const signUpUser = async (req: Request, res: Response) => {
   try {
     const result = await authService.signUpToDB(req.body);
 
-    sendResponse(res, {
+    return sendResponse(res, {
       statusCode: StatusCodes.CREATED,
       success: true,
-      message: "User created successfully",
+      message: "User registered successfully",
       data: result,
     });
   } catch (error) {
-    let message = "SignUp failed.";
-
-    if (error instanceof Error) {
-      message = error.message;
+    if (error instanceof AppError) {
+      return sendResponse(res, {
+        statusCode: error.statusCode,
+        success: false,
+        message: error.message,
+      });
     }
-    sendResponse(res, {
-      statusCode: StatusCodes.BAD_REQUEST,
+
+    return sendResponse(res, {
+      statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
       success: false,
-      message: message,
+      message: "Something went wrong",
+      errors: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -30,22 +35,27 @@ const signUpUser = async (req: Request, res: Response) => {
 const loginUser = async (req: Request, res: Response) => {
   try {
     const result = await authService.loginToDB(req.body);
-    sendResponse(res, {
+
+    return sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
-      message: "Login successful.",
+      message: "Login successful",
       data: result,
     });
   } catch (error) {
-    let message = "Login failed.";
-
-    if (error instanceof Error) {
-      message = error.message;
+    if (error instanceof AppError) {
+      return sendResponse(res, {
+        statusCode: error.statusCode,
+        success: false,
+        message: error.message,
+      });
     }
-    sendResponse(res, {
-      statusCode: StatusCodes.BAD_REQUEST,
+
+    return sendResponse(res, {
+      statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
       success: false,
-      message: message,
+      message: "Something went wrong",
+      errors: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
