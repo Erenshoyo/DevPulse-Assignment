@@ -1,12 +1,13 @@
 import type { ILogin, ISignUp, IUser } from "./auth.interface";
 import pool from "../../db/db";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 import config from "../../config";
 import { AppError } from "../../utils/appError";
 import { StatusCodes } from "http-status-codes";
 
-const secret = config.secret;
+const secret = config.secret as string;
+const refreshSecret = config.refresh_secret as string;
 
 const signUpToDB = async (payLoad: ISignUp) => {
   const { name, email, password, role = "contributor" } = payLoad;
@@ -45,17 +46,35 @@ const signUpToDB = async (payLoad: ISignUp) => {
   const newUser = result.rows[0];
 
   if (!newUser) {
-    throw new AppError("User creation failed.", StatusCodes.INTERNAL_SERVER_ERROR);
+    throw new AppError(
+      "User creation failed.",
+      StatusCodes.INTERNAL_SERVER_ERROR,
+    );
   }
 
   return newUser;
 };
 
+const createTokenPayload = (user: IUser) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+});
+
+const signTokens = (payload: Record<string, unknown>) => ({
+  accessToken: jwt.sign(payload, secret, { expiresIn: "1d" }),
+  refreshToken: jwt.sign(payload, refreshSecret, { expiresIn: "90d" }),
+});
+
 const loginToDB = async (payLoad: ILogin) => {
   const { email, password } = payLoad;
 
   if (!email || !password) {
-    throw new AppError("Email and password are required.", StatusCodes.BAD_REQUEST);
+    throw new AppError(
+      "Email and password are required.",
+      StatusCodes.BAD_REQUEST,
+    );
   }
 
   const result = await pool.query<IUser>(
@@ -75,24 +94,56 @@ const loginToDB = async (payLoad: ILogin) => {
     throw new AppError("Invalid credentials", StatusCodes.BAD_REQUEST);
   }
 
-  const token = jwt.sign(
-    {
-      id: user.id,
-      name: user.name,
-      role: user.role,
-    },
-    secret as string,
-    { expiresIn: "7d" },
-  );
+  const tokens = signTokens(createTokenPayload(user));
 
   const { password: _password, ...userWithoutPassword } = user;
 
-  const data = { token, user: userWithoutPassword };
+  return {
+    data: {
+      user: userWithoutPassword,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    },
+  };
+};
 
-  return data;
+const refreshAccessToken = async (refreshToken: string) => {
+  if (!refreshToken) {
+    throw new AppError("Refresh token is required", StatusCodes.UNAUTHORIZED);
+  }
+
+  let decoded: JwtPayload;
+
+  try {
+    decoded = jwt.verify(refreshToken, refreshSecret) as JwtPayload;
+  } catch (error) {
+    throw new AppError("Invalid refresh token", StatusCodes.UNAUTHORIZED);
+  }
+
+  const result = await pool.query<IUser>(
+    `SELECT * FROM users WHERE id = $1`,
+    [decoded.id],
+  );
+
+  const user = result.rows[0];
+
+  if (!user) {
+    throw new AppError("User not found", StatusCodes.NOT_FOUND);
+  }
+
+  if (user.role !== "contributor" && user.role !== "maintainer") {
+    throw new AppError("Invalid user role", StatusCodes.UNAUTHORIZED);
+  }
+
+  const accessToken = jwt.sign(createTokenPayload(user), secret, {
+    expiresIn: "1d",
+  });
+
+  return { accessToken };
 };
 
 export const authService = {
   signUpToDB,
   loginToDB,
+  refreshAccessToken,
 };
