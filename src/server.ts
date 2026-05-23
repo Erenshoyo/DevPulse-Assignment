@@ -4,11 +4,6 @@ import { initDB } from "./db/db";
 
 const PORT = config.port;
 
-const main = () => {
-  initDB();
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
-};
+initDB();
 
-main();
+export default app;
